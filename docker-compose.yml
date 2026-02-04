@@ -8,5 +8,5 @@ services:
     ports:
       - 27017:27017
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ks_api_admin
-      MONGO_INITDB_ROOT_PASSWORD: ks@2026_Ap!
+      MONGO_INITDB_ROOT_USERNAME: amodif
+      MONGO_INITDB_ROOT_PASSWORD: amodif!
