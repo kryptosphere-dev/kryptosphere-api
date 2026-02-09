@@ -1,14 +1,14 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
+import { jsonResponse } from "../lib/middleware";
 
 /**
  * Route de test pour vérifier que Vercel détecte bien les routes
  * GET /api/test
  */
-export default function handler(req: VercelRequest, res: VercelResponse) {
-  return res.status(200).json({ 
+export function GET(request: Request) {
+  return jsonResponse({
     message: "API is working!",
     timestamp: new Date().toISOString(),
-    method: req.method,
-    path: req.url
+    method: request.method,
+    path: new URL(request.url).pathname,
   });
 }

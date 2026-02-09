@@ -1,44 +1,38 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
 import { connectMongo } from "../../lib/mongodb";
 import { MongooseService } from "../../services/mongoose";
-import { verifySession, verifyRole, sendUnauthorized, sendForbidden, AuthenticatedRequest } from "../../lib/middleware";
+import { verifySession, verifyRole, sendUnauthorized, sendForbidden, jsonResponse, errorResponse } from "../../lib/middleware";
 import { IUserRole } from "../../models";
 
-export default async function handler(
-  req: AuthenticatedRequest,
-  res: VercelResponse
-) {
+export async function POST(request: Request) {
   // MongoDB connection (automatically cached)
   await connectMongo();
 
-  if (req.method !== "POST") {
-    return res.status(405).end();
-  }
-
   // Session verification
-  const user = await verifySession(req);
+  const user = await verifySession(request);
   if (!user) {
-    return sendUnauthorized(res);
+    return sendUnauthorized();
   }
 
   // Role verification
   if (!verifyRole(user, IUserRole.SuperAdmin)) {
-    return sendForbidden(res);
-  }
-
-  // Body validation
-  if (!req.body || typeof req.body.name !== "string") {
-    return res.status(400).end();
+    return sendForbidden();
   }
 
   try {
+    const body = await request.json();
+
+    // Body validation
+    if (!body || typeof body.name !== "string") {
+      return errorResponse("Invalid request body", 400);
+    }
+
     const mongooseService = await MongooseService.getInstance();
     const boardServices = mongooseService.boardServices;
-    const board = await boardServices.createBoard(req.body);
+    const board = await boardServices.createBoard(body);
 
-    return res.status(200).json(board);
+    return jsonResponse(board);
   } catch (error) {
     console.error("Create board error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    return errorResponse("Internal server error", 500);
   }
 }

@@ -1,20 +1,12 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
 import { MongooseService } from "../services/mongoose";
 import { IUser, IUserRole } from "../models";
 
-// Extension of VercelRequest type to include user
-export interface AuthenticatedRequest extends VercelRequest {
-  user?: IUser;
-}
-
 /**
- * Middleware to verify user session
- * Adds req.user if session is valid
+ * Middleware to verify user session from Request
+ * Returns user if session is valid, null otherwise
  */
-export async function verifySession(
-  req: AuthenticatedRequest
-): Promise<IUser | null> {
-  const authorization = req.headers.authorization;
+export async function verifySession(request: Request): Promise<IUser | null> {
+  const authorization = request.headers.get("authorization");
   if (!authorization) {
     return null;
   }
@@ -46,13 +38,39 @@ export function verifyRole(user: IUser | null, requiredRole: IUserRole): boolean
 /**
  * Helper to return a 401 error
  */
-export function sendUnauthorized(res: VercelResponse) {
-  return res.status(401).end();
+export function sendUnauthorized(): Response {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 /**
  * Helper to return a 403 error
  */
-export function sendForbidden(res: VercelResponse) {
-  return res.status(403).end();
+export function sendForbidden(): Response {
+  return new Response(JSON.stringify({ error: "Forbidden" }), {
+    status: 403,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Helper to return a JSON response
+ */
+export function jsonResponse(data: any, status: number = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Helper to return an error response
+ */
+export function errorResponse(message: string, status: number = 500): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }

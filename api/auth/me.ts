@@ -1,23 +1,15 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
 import { connectMongo } from "../../lib/mongodb";
-import { verifySession, sendUnauthorized, AuthenticatedRequest } from "../../lib/middleware";
+import { verifySession, sendUnauthorized, jsonResponse } from "../../lib/middleware";
 
-export default async function handler(
-  req: AuthenticatedRequest,
-  res: VercelResponse
-) {
+export async function GET(request: Request) {
   // MongoDB connection (automatically cached)
   await connectMongo();
 
-  if (req.method !== "GET") {
-    return res.status(405).end();
-  }
-
   // Session verification
-  const user = await verifySession(req);
+  const user = await verifySession(request);
   if (!user) {
-    return sendUnauthorized(res);
+    return sendUnauthorized();
   }
 
-  return res.status(200).json(user);
+  return jsonResponse(user);
 }
