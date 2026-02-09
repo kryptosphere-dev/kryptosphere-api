@@ -1,4 +1,5 @@
-import { connect, Mongoose } from "mongoose";
+import mongoose, { Mongoose } from "mongoose";
+import { connectMongo } from "../../lib/mongodb";
 import { UserService } from "./user.service";
 import { SessionService } from "./session.service";
 import { BoardService } from "./board.service";
@@ -30,22 +31,11 @@ export class MongooseService {
         this.centerServices = new CenterService(this);
     }
 
-    private static OpenConnection(): Promise<Mongoose> {
-
-        return connect(process.env.MONGODB_URI as string, {
-            auth: {
-                username: process.env.MONGODB_USER,
-                password: process.env.MONGODB_PWD
-            },
-            authSource: 'admin',
-            dbName: process.env.MONGODB_DB as string,
-        })
-    }
-
     public static async getInstance(): Promise<MongooseService> {
         if (!MongooseService.instance) {
-            const connection = await MongooseService.OpenConnection();
-            MongooseService.instance = new MongooseService(connection);
+            // Use cached connection for serverless
+            const connection = await connectMongo();
+            MongooseService.instance = new MongooseService(connection as Mongoose);
         }
 
         return MongooseService.instance;
