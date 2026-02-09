@@ -3,7 +3,7 @@ name: Push to Fork (kryptosphere-dev)
 on:
   push:
     branches:
-      - vercel
+      - main
 
 jobs:
   sync-to-fork:
@@ -44,4 +44,4 @@ jobs:
       - name: Push to kryptosphere-dev
         run: |
           git remote add fork git@github.com:kryptosphere-dev/kryptosphere-api.git
-          git push fork vercel --force
+          git push fork main --force
