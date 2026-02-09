@@ -40,7 +40,7 @@ cp env.example .env
 ```
 
 Remplissez les variables dans `.env` :
- 
+
 ```env
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority
 SETUP_SECRET=votre_token_secret_ici
