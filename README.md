@@ -132,7 +132,7 @@ curl -X GET https://votre-domaine.vercel.app/api/auth/me \
 ```
 
 ## 📁 Structure du projet 
-
+ 
 ```
 kryptosphere-api/
 ├── api/                    # Routes Vercel Serverless Functions
