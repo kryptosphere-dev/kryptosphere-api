@@ -7,6 +7,7 @@ import { MemberRoleService } from "./memberRole.service";
 import { AssociationMemberService } from "./associationMember.service";
 import { ChapterService } from "./chapter.service";
 import { CenterService } from "./center.service";
+import { ImageService } from "./image.service";
 
 
 export class MongooseService {
@@ -19,6 +20,7 @@ export class MongooseService {
     public associationMemberServices: AssociationMemberService;
     public chapterServices: ChapterService;
     public centerServices: CenterService;
+    public imageServices: ImageService;
 
     private constructor(mongoose: Mongoose) {
         this.mongoose = mongoose;
@@ -29,6 +31,7 @@ export class MongooseService {
         this.associationMemberServices = new AssociationMemberService(this);
         this.chapterServices = new ChapterService(this);
         this.centerServices = new CenterService(this);
+        this.imageServices = new ImageService(this);
     }
 
     public static async getInstance(): Promise<MongooseService> {

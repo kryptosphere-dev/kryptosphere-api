@@ -2,6 +2,11 @@ import { Schema } from "mongoose";
 import { IImage } from "../../../models";
 
 export const imageSchema = new Schema<IImage>({
+    key: {
+        type: String,
+        required: true,
+        unique: true
+    },
     url: {
         type: String,
         required: true
