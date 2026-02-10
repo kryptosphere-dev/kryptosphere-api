@@ -1,5 +1,5 @@
 import { connectMongo } from "../lib/mongodb";
-import { MongooseService } from "../services/mongoose";
+import { MongooseService } from "../services/mongoose/mongoose.service";
 import { IUserRole } from "../models";
 import { jsonResponse, errorResponse } from "../lib/middleware";
 

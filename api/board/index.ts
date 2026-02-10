@@ -1,5 +1,5 @@
 import { connectMongo } from "../../lib/mongodb";
-import { MongooseService } from "../../services/mongoose";
+import { MongooseService } from "../../services/mongoose/mongoose.service";
 import { verifySession, verifyRole, sendUnauthorized, sendForbidden, jsonResponse, errorResponse } from "../../lib/middleware";
 import { IUserRole } from "../../models";
 

@@ -1,4 +1,4 @@
-import { MongooseService } from "../services/mongoose";
+import { MongooseService } from "../services/mongoose/mongoose.service";
 import { IUser, IUserRole } from "../models";
 
 /**

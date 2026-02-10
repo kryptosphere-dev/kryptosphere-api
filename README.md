@@ -130,26 +130,28 @@ curl -X POST https://votre-domaine.vercel.app/api/auth/login \
 curl -X GET https://votre-domaine.vercel.app/api/auth/me \
   -H "Authorization: Bearer SESSION_ID_RETOURNE_PAR_LOGIN"
 ```
- 
+
 ## 📁 Structure du projet 
 
 ```
 kryptosphere-api/
-├── api/                    # Routes Vercel Serverless Functions
+├── api/                    # Routes Vercel Serverless Functions (Web Standards)
 │   ├── auth/
 │   │   ├── login.ts       # POST /api/auth/login
 │   │   └── me.ts          # GET /api/auth/me
 │   ├── board/
 │   │   └── index.ts       # POST /api/board
-│   └── setup.ts           # POST /api/setup (initialisation)
-├── lib/                    # Utilitaires
-│   ├── mongodb.ts         # Connexion MongoDB mise en cache
-│   └── middleware.ts      # Middlewares Vercel
+│   ├── setup.ts           # POST /api/setup (initialisation)
+│   └── health.ts          # GET /api/health (healthcheck)
+├── lib/                    # Utilitaires partagés
+│   ├── mongodb.ts         # Connexion MongoDB mise en cache (adaptée serverless)
+│   └── middleware.ts      # Sécurité & helpers (session, rôle, réponses HTTP)
 ├── services/               # Services métier
-│   └── mongoose/          # Services MongoDB
-├── models/                 # Interfaces TypeScript
-├── controllers/            # Contrôleurs Express (dev local)
-├── vercel.json            # Configuration Vercel
+│   └── mongoose/          # Services MongoDB (User, Session, Board, etc.)
+├── models/                 # Interfaces TypeScript (User, Board, Session, ...)
+├── utils/
+│   └── security.utils.ts  # Hash mot de passe, etc.
+├── env.example            # Exemple de configuration d'environnement
 ├── package.json
 └── tsconfig.json
 ```
@@ -162,6 +164,7 @@ kryptosphere-api/
 | `GET` | `/api/auth/me` | Récupérer l'utilisateur connecté | ✅ Session |
 | `POST` | `/api/board` | Créer un board | ✅ SuperAdmin |
 | `POST` | `/api/setup` | Initialiser le root user | 🔑 SETUP_SECRET |
+| `GET` | `/api/health` | Healthcheck API & DB | ❌ |
 
 ## 🔒 Sécurité
 
@@ -179,9 +182,9 @@ kryptosphere-api/
 3. Utilisez des mots de passe forts
 4. Surveillez les logs Vercel pour détecter les tentatives d'accès suspectes
 
-## 🛠️ Développement local
+## 🛠️ Développement local (avec `npx vercel dev`)
 
-Pour tester localement avec Express :
+En local, on utilise **exactement le même code** que sur Vercel, via le CLI Vercel, mais sans installation globale grâce à `npx`.
 
 ```bash
 # Installer les dépendances
@@ -191,14 +194,31 @@ npm install
 cp env.example .env
 # Éditer .env avec vos valeurs
 
-# Compiler TypeScript
-npm run build
-
-# Lancer le serveur Express
-npm start
+# Lancer l'API en local (mêmes routes qu'en prod)
+npm run dev
 ```
 
-Les routes seront disponibles sur `http://localhost:3000/auth/*` et `http://localhost:3000/board/*`
+`npm run dev` exécute en réalité `npx vercel dev` :
+
+- au **premier lancement**, `npx` va :
+  - télécharger le CLI Vercel (`vercel@...`)
+  - te demander de te connecter (`Visit vercel.com/device and enter XXXXX-XXXXX`)
+  - tu dois te connecter avec le compte **contact.kryptosphere@gmail.com**
+- aux lancements suivants, il réutilisera cette configuration (plus besoin de se reconnecter).
+
+Par défaut, Vercel servira l'API sur `http://localhost:3000`.
+Les routes sont les mêmes qu'en production :
+
+```bash
+# Setup (une seule fois)
+curl -X POST http://localhost:3000/api/setup ...
+
+# Login
+curl -X POST http://localhost:3000/api/auth/login ...
+
+# Me
+curl -X GET http://localhost:3000/api/auth/me ...
+```
 
 ## 🐛 Dépannage
 
@@ -213,16 +233,12 @@ Les routes seront disponibles sur `http://localhost:3000/auth/*` et `http://loca
 
 ### Erreur de connexion MongoDB
 → Vérifiez :
-- Vos variables d'environnement MongoDB dans Vercel Dashboard
+- Vos variables d'environnement MongoDB dans Vercel Dashboard et/ou `.env`
 - Que votre IP est autorisée sur MongoDB Atlas (ou utilisez `0.0.0.0/0`)
 - Que votre connection string est correcte
 
 ### Cold start lent
 → Normal pour les fonctions serverless. Les appels suivants seront plus rapides grâce au cache MongoDB.
-
-## 📚 Documentation complète
-
-Pour plus de détails, consultez [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ## 📦 Technologies
 
@@ -230,7 +246,6 @@ Pour plus de détails, consultez [DEPLOYMENT.md](./DEPLOYMENT.md)
 - **Base de données** : MongoDB Atlas
 - **ORM** : Mongoose
 - **Language** : TypeScript
-- **Framework** : Express (dev local uniquement)
 
 ## 📝 Licence
 
