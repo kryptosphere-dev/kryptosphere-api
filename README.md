@@ -166,25 +166,9 @@ kryptosphere-api/
 | `POST` | `/api/setup` | Initialiser le root user | 🔑 SETUP_SECRET |
 | `GET` | `/api/health` | Healthcheck API & DB | ❌ |
 
-## 🔒 Sécurité
-
-### Variables d'environnement
-
-- ✅ **Ne jamais commiter** `.env` dans Git
-- ✅ Utiliser des tokens secrets forts pour `SETUP_SECRET`
-- ✅ Limiter les IPs autorisées sur MongoDB Atlas si possible
-- ✅ HTTPS automatique avec Vercel
-
-### Bonnes pratiques
-
-1. Changez le mot de passe root après la première connexion
-2. Ne partagez jamais le `SETUP_SECRET`
-3. Utilisez des mots de passe forts
-4. Surveillez les logs Vercel pour détecter les tentatives d'accès suspectes
-
 ## 🛠️ Développement local (avec `npx vercel dev`)
 
-En local, on utilise **exactement le même code** que sur Vercel, via le CLI Vercel, mais sans installation globale grâce à `npx`.
+En local, on utilise **exactement le même code** que sur Vercel, via le CLI Vercel, en lançant manuellement `npx vercel dev`.
 
 ```bash
 # Installer les dépendances
@@ -195,16 +179,15 @@ cp env.example .env
 # Éditer .env avec vos valeurs
 
 # Lancer l'API en local (mêmes routes qu'en prod)
-npm run dev
+npx vercel dev
 ```
 
-`npm run dev` exécute en réalité `npx vercel dev` :
+Au **premier lancement**, `npx vercel dev` va :
+- télécharger le CLI Vercel (`vercel@...`) si besoin
+- te demander de te connecter (`Visit vercel.com/device and enter XXXXX-XXXXX`)
+- tu dois te connecter avec le compte **contact.kryptosphere@gmail.com**
 
-- au **premier lancement**, `npx` va :
-  - télécharger le CLI Vercel (`vercel@...`)
-  - te demander de te connecter (`Visit vercel.com/device and enter XXXXX-XXXXX`)
-  - tu dois te connecter avec le compte **contact.kryptosphere@gmail.com**
-- aux lancements suivants, il réutilisera cette configuration (plus besoin de se reconnecter).
+Aux lancements suivants, il réutilisera cette configuration (plus besoin de se reconnecter).
 
 Par défaut, Vercel servira l'API sur `http://localhost:3000`.
 Les routes sont les mêmes qu'en production :
@@ -220,33 +203,3 @@ curl -X POST http://localhost:3000/api/auth/login ...
 curl -X GET http://localhost:3000/api/auth/me ...
 ```
 
-## 🐛 Dépannage
-
-### Erreur "SETUP_SECRET environment variable is not set"
-→ Ajoutez la variable `SETUP_SECRET` dans Vercel Dashboard > Settings > Environment Variables
-
-### Erreur "Unauthorized" lors du setup
-→ Vérifiez que le token dans `Authorization: Bearer` correspond exactement à `SETUP_SECRET`
-
-### Erreur "Root user already exists"
-→ Normal ! Le root user a déjà été créé. La route `/api/setup` ne peut être utilisée qu'une seule fois.
-
-### Erreur de connexion MongoDB
-→ Vérifiez :
-- Vos variables d'environnement MongoDB dans Vercel Dashboard et/ou `.env`
-- Que votre IP est autorisée sur MongoDB Atlas (ou utilisez `0.0.0.0/0`)
-- Que votre connection string est correcte
-
-### Cold start lent
-→ Normal pour les fonctions serverless. Les appels suivants seront plus rapides grâce au cache MongoDB.
-
-## 📦 Technologies
-
-- **Runtime** : Vercel Serverless Functions
-- **Base de données** : MongoDB Atlas
-- **ORM** : Mongoose
-- **Language** : TypeScript
-
-## 📝 Licence
-
-[Votre licence ici]
