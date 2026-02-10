@@ -130,7 +130,7 @@ curl -X POST https://votre-domaine.vercel.app/api/auth/login \
 curl -X GET https://votre-domaine.vercel.app/api/auth/me \
   -H "Authorization: Bearer SESSION_ID_RETOURNE_PAR_LOGIN"
 ```
-
+ 
 ## 📁 Structure du projet 
 
 ```
