@@ -1,6 +1,5 @@
 import type { Context } from 'hono'
 import { createMiddleware } from 'hono/factory'
-import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { PostgresService } from '../services/postgres/postgres.service'
 import { IUser, IUserRole } from '../models'
 
@@ -8,8 +7,26 @@ export type AuthEnv = {
   Variables: { user: IUser }
 }
 
-// jose v6 is ESM-only. Node 24 (Vercel runtime) supports require(esm) natively since Node 23+.
-const JWKS = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
+// jose v6 is ESM-only. Vercel runtime uses a custom Rust loader (/opt/rust/nodejs.js)
+// that does NOT enable require(esm) even on Node 24, so static `import { jwtVerify } from 'jose'`
+// crashes with ERR_REQUIRE_ESM at runtime.
+//
+// Workaround: dynamic import via `new Function(...)` to bypass tsc's transformation of
+// `await import('jose')` into a synchronous require() (which would also crash).
+//
+// Vercel's static analyzer cannot see through `new Function`, so it won't auto-include
+// the `jose` package in the function bundle. We force inclusion via `vercel.json`:
+//   "functions": { "app.ts": { "includeFiles": "node_modules/jose/**/*" } }
+type JoseModule = typeof import('jose')
+type JWKSGetter = ReturnType<JoseModule['createRemoteJWKSet']>
+const importJose: () => Promise<JoseModule> = new Function('return import("jose")') as () => Promise<JoseModule>
+let _jose: JoseModule | null = null
+let _jwks: JWKSGetter | null = null
+const getJose = async (): Promise<{ jose: JoseModule; jwks: JWKSGetter }> => {
+  if (!_jose) _jose = await importJose()
+  if (!_jwks) _jwks = _jose.createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
+  return { jose: _jose, jwks: _jwks }
+}
 
 const isDev = process.env.NODE_ENV !== 'production'
 const unauthorized = (c: Context<AuthEnv>, reason: string) => {
@@ -28,7 +45,8 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 
   let sub: string
   try {
-    const { payload } = await jwtVerify(token, JWKS)
+    const { jose, jwks } = await getJose()
+    const { payload } = await jose.jwtVerify(token, jwks)
     if (!payload.sub) return unauthorized(c, 'jwt_missing_sub')
     sub = payload.sub
   } catch (err) {
