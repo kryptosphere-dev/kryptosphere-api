@@ -1,5 +1,6 @@
 import type { Context } from 'hono'
 import { createMiddleware } from 'hono/factory'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { PostgresService } from '../services/postgres/postgres.service'
 import { IUser, IUserRole } from '../models'
 
@@ -7,16 +8,8 @@ export type AuthEnv = {
   Variables: { user: IUser }
 }
 
-type JoseModule = typeof import('jose')
-type JWKSGetter = ReturnType<JoseModule['createRemoteJWKSet']>
-const importJose: () => Promise<JoseModule> = new Function('return import("jose")') as () => Promise<JoseModule>
-let _jose: JoseModule | null = null
-let _jwks: JWKSGetter | null = null
-const getJose = async (): Promise<{ jose: JoseModule; jwks: JWKSGetter }> => {
-  if (!_jose) _jose = await importJose()
-  if (!_jwks) _jwks = _jose.createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
-  return { jose: _jose, jwks: _jwks }
-}
+// jose v6 is ESM-only. Node 24 (Vercel runtime) supports require(esm) natively since Node 23+.
+const JWKS = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
 
 const isDev = process.env.NODE_ENV !== 'production'
 const unauthorized = (c: Context<AuthEnv>, reason: string) => {
@@ -33,14 +26,9 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 
   const token = parts[1]
 
-  if (isDev) {
-    const dots = (token.match(/\./g) || []).length
-  }
-
   let sub: string
   try {
-    const { jose, jwks } = await getJose()
-    const { payload } = await jose.jwtVerify(token, jwks)
+    const { payload } = await jwtVerify(token, JWKS)
     if (!payload.sub) return unauthorized(c, 'jwt_missing_sub')
     sub = payload.sub
   } catch (err) {
