@@ -1,18 +1,25 @@
-import type { Types } from "mongoose";
-import type { IBoard } from "./board.interface";
-import type { ICenter } from "./center.interface";
 import type { ITimestamp } from "./timestamp.interface";
-import type { IGalery } from "./galery.interface";
-import type { Ref } from "./types/ref.type";
 
 export interface IChapter extends ITimestamp {
-    _id: Types.ObjectId;
-    name: string;
-    location: string;
-    establishedDate: Date;
-    isActive: boolean;
-    boardId: Ref<IBoard>;
-    membersCount: number;
-    centerIds?: Ref<ICenter>[];
-    galeryIds?: Ref<IGalery>[];
+  id: string;
+  slug: string;
+  nameFr: string;
+  nameEn: string;
+  descriptionFr: string;
+  descriptionEn: string;
+  littleDescriptionFr: string;
+  littleDescriptionEn: string;
+  cityId: string;
+  countryId: string;
+  schoolId?: string;
+  latitude?: number;
+  longitude?: number;
+  heroImageId?: string;
+  logoId?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  establishedDate?: Date;
+  isActive: boolean;
+  galleryId?: string;
 }
