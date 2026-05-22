@@ -6,4 +6,3 @@ dist
 docker-compose.yml
 CLAUDE.md
 server.ts
-prisma.config.ts
