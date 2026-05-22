@@ -1,12 +1,17 @@
-version: '3.1'
+version: '3.8'
 
 services:
-
-  mongo:
-    image: mongo:latest
-    restart: always
-    ports:
-      - 27017:27017
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: amodif
-      MONGO_INITDB_ROOT_PASSWORD: amodif!
+      POSTGRES_USER: kryptosphere
+      POSTGRES_PASSWORD: kryptosphere
+      POSTGRES_DB: kryptosphere
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
