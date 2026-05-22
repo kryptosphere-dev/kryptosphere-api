@@ -1,5 +1,4 @@
 import { createMiddleware } from 'hono/factory'
-import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { PostgresService } from '../services/postgres/postgres.service'
 import { IUser, IUserRole } from '../models'
 
@@ -7,7 +6,16 @@ export type AuthEnv = {
   Variables: { user: IUser }
 }
 
-const JWKS = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
+// jose v6 is pure ESM — lazy dynamic import to stay compatible with CJS build (tsc → Vercel)
+type JoseModule = typeof import('jose')
+type JWKSGetter = ReturnType<JoseModule['createRemoteJWKSet']>
+let _jose: JoseModule | null = null
+let _jwks: JWKSGetter | null = null
+const getJose = async (): Promise<{ jose: JoseModule; jwks: JWKSGetter }> => {
+  if (!_jose) _jose = await import('jose')
+  if (!_jwks) _jwks = _jose.createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
+  return { jose: _jose, jwks: _jwks }
+}
 
 const isDev = process.env.NODE_ENV !== 'production'
 const unauthorized = (c: Parameters<Parameters<typeof createMiddleware>[0]>[0], reason: string) => {
@@ -30,7 +38,8 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 
   let sub: string
   try {
-    const { payload } = await jwtVerify(token, JWKS)
+    const { jose, jwks } = await getJose()
+    const { payload } = await jose.jwtVerify(token, jwks)
     if (!payload.sub) return unauthorized(c, 'jwt_missing_sub')
     sub = payload.sub
   } catch (err) {
