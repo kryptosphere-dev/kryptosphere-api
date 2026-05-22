@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '../../lib/middleware'
+import { authMiddleware } from '../lib/middleware'
 
 const router = new Hono()
 
