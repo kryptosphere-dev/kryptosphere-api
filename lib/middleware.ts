@@ -44,7 +44,8 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
     if (!payload.sub) return unauthorized(c, 'jwt_missing_sub')
     sub = payload.sub
   } catch (err) {
-    return unauthorized(c, `jwt_verify_failed: ${(err as Error).name}`)
+    const e = err as Error
+    return unauthorized(c, `jwt_verify_failed: ${e.name}: ${e.message}`)
   }
 
   const user = await PostgresService.getInstance().userServices.syncUser(sub)
