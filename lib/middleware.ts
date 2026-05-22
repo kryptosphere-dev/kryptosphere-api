@@ -1,76 +1,50 @@
-import { MongooseService } from "../services/mongoose/mongoose.service";
-import { IUser, IUserRole } from "../models";
+import { createMiddleware } from 'hono/factory'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+import { PostgresService } from '../services/postgres/postgres.service'
+import { IUser, IUserRole } from '../models'
 
-/**
- * Middleware to verify user session from Request
- * Returns user if session is valid, null otherwise
- */
-export async function verifySession(request: Request): Promise<IUser | null> {
-  const authorization = request.headers.get("authorization");
-  if (!authorization) {
-    return null;
+export type AuthEnv = {
+  Variables: { user: IUser }
+}
+
+const JWKS = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
+
+const isDev = process.env.NODE_ENV !== 'production'
+const unauthorized = (c: Parameters<Parameters<typeof createMiddleware>[0]>[0], reason: string) => {
+  if (isDev) console.warn('[auth] 401:', reason)
+  return c.json({ error: 'Unauthorized', ...(isDev && { reason }) }, 401)
+}
+
+export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
+  const authorization = c.req.header('authorization')
+  if (!authorization) return unauthorized(c, 'no_authorization_header')
+
+  const parts = authorization.split(' ')
+  if (parts.length !== 2 || parts[0] !== 'Bearer') return unauthorized(c, 'malformed_authorization_header')
+
+  const token = parts[1]
+
+  if (isDev) {
+    const dots = (token.match(/\./g) || []).length
   }
 
-  const parts = authorization.split(" ");
-  if (parts.length !== 2 || parts[0] !== "Bearer") {
-    return null;
+  let sub: string
+  try {
+    const { payload } = await jwtVerify(token, JWKS)
+    if (!payload.sub) return unauthorized(c, 'jwt_missing_sub')
+    sub = payload.sub
+  } catch (err) {
+    return unauthorized(c, `jwt_verify_failed: ${(err as Error).name}`)
   }
 
-  const token = parts[1];
-  const mongooseService = await MongooseService.getInstance();
-  const sessionServices = mongooseService.sessionServices;
-  const session = await sessionServices.findActiveSession(token);
+  const user = await PostgresService.getInstance().userServices.syncUser(sub)
 
-  if (!session) {
-    return null;
-  }
+  c.set('user', user)
+  await next()
+})
 
-  return session.user as IUser;
-}
-
-/**
- * Middleware to verify user role
- */
-export function verifyRole(user: IUser | null, requiredRole: IUserRole): boolean {
-  return user !== null && user.role === requiredRole;
-}
-
-/**
- * Helper to return a 401 error
- */
-export function sendUnauthorized(): Response {
-  return new Response(JSON.stringify({ error: "Unauthorized" }), {
-    status: 401,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Helper to return a 403 error
- */
-export function sendForbidden(): Response {
-  return new Response(JSON.stringify({ error: "Forbidden" }), {
-    status: 403,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Helper to return a JSON response
- */
-export function jsonResponse(data: any, status: number = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Helper to return an error response
- */
-export function errorResponse(message: string, status: number = 500): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
+export const requireRole = (role: IUserRole) =>
+  createMiddleware<AuthEnv>(async (c, next) => {
+    if (c.get('user').role !== role) return c.json({ error: 'Forbidden' }, 403)
+    await next()
+  })

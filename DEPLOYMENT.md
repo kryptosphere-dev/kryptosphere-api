@@ -1,199 +1,113 @@
-# Guide de déploiement sur Vercel
+# Guide de déploiement
 
-## 📋 Prérequis
+## Prérequis
 
-- Compte Vercel (gratuit)
-- Compte MongoDB Atlas (gratuit)
-- Node.js installé localement (pour les tests)
+- Compte [Vercel](https://vercel.com)
+- Projet [Neon](https://console.neon.tech) avec une base PostgreSQL 16
+- Node.js 18+
 
-## 🚀 Étapes de déploiement
+---
 
-### 1. Installer les dépendances
+## 1. Préparer Neon
 
-```bash
-npm install
-```
+1. Créer un projet Neon (région la plus proche)
+2. Copier la connection string depuis le dashboard : **Connection Details > Connection string**
+   - Format : `postgresql://user:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
+3. Appliquer le schema Prisma :
+   ```bash
+   DATABASE_URL=<connection-string> npx prisma migrate deploy
+   ```
 
-### 2. Préparer MongoDB Atlas
+---
 
-1. Créez un cluster MongoDB Atlas (gratuit)
-2. Créez un utilisateur de base de données
-3. Configurez les IPs autorisées (ou `0.0.0.0/0` pour toutes les IPs)
-4. Récupérez votre connection string
+## 2. Configurer Vercel
 
-### 3. Configurer les variables d'environnement sur Vercel
+Dans **Settings > Environment Variables**, ajouter :
 
-Dans le dashboard Vercel, allez dans **Settings > Environment Variables** et ajoutez :
+| Variable | Valeur |
+|---|---|
+| `DATABASE_URL` | Connection string Neon complète |
+| `BLOB_READ_WRITE_TOKEN` | Token Vercel Blob (depuis le dashboard Blob) |
+| `SETUP_SECRET` | `openssl rand -hex 32` |
+| `SHA256_SALT` | `openssl rand -hex 32` |
 
-#### Variables obligatoires :
+---
 
-- `MONGODB_URI` : Votre URI MongoDB Atlas complète
-  - Exemple : `mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority`
-  - OU utilisez les variables séparées ci-dessous
+## 3. Déployer
 
-#### Variables optionnelles (si vous n'utilisez pas MONGODB_URI complète) :
+### Via GitHub (recommandé)
 
-- `MONGODB_USER` : Nom d'utilisateur MongoDB
-- `MONGODB_PWD` : Mot de passe MongoDB
-- `MONGODB_DB` : Nom de la base de données
+1. Pousser le code sur GitHub
+2. Sur Vercel : **Add New Project** > importer le repo
+3. Vercel détecte automatiquement TypeScript et compile `api/[[...route]].ts`
+4. Cliquer **Deploy**
 
-#### Variable de sécurité pour le setup :
-
-- `SETUP_SECRET` : **Générez un token secret fort** (ex: `openssl rand -hex 32`)
-  - Ce token sera requis pour créer le root user
-  - ⚠️ **IMPORTANT** : Gardez ce token secret et ne le partagez pas
-
-### 4. Déployer sur Vercel
-
-#### Option A : Via GitHub (recommandé)
-
-1. Poussez votre code sur GitHub
-2. Allez sur [vercel.com](https://vercel.com)
-3. Cliquez sur **Add New Project**
-4. Importez votre repository GitHub
-5. Vercel détectera automatiquement la configuration
-6. Cliquez sur **Deploy**
-
-#### Option B : Via CLI
+### Via CLI
 
 ```bash
-# Installer Vercel CLI
 npm i -g vercel
-
-# Se connecter
 vercel login
-
-# Déployer
-vercel
-
-# Pour la production
 vercel --prod
 ```
 
-### 5. Initialiser le root user (⚠️ Sécurisé)
+---
 
-Après le déploiement, vous devez créer le root user **une seule fois**.
-
-#### Méthode 1 : Avec curl
+## 4. Initialiser le root user (une seule fois)
 
 ```bash
-curl -X POST https://votre-domaine.vercel.app/api/setup \
+curl -X POST https://your-api.vercel.app/api/setup \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer VOTRE_SETUP_SECRET" \
+  -H "Authorization: Bearer $SETUP_SECRET" \
   -d '{
-    "login": "root",
-    "password": "VOTRE_MOT_DE_PASSE_SECURISE",
-    "email": "admin@votre-domaine.com",
-    "firstName": "Admin",
-    "lastName": "User"
+    "email": "admin@example.com",
+    "password": "secure-password"
   }'
 ```
 
-#### Méthode 2 : Avec le body
-
-```bash
-curl -X POST https://votre-domaine.vercel.app/api/setup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "setupSecret": "VOTRE_SETUP_SECRET",
-    "login": "root",
-    "password": "VOTRE_MOT_DE_PASSE_SECURISE",
-    "email": "admin@votre-domaine.com",
-    "firstName": "Admin",
-    "lastName": "User"
-  }'
-```
-
-#### Méthode 3 : Avec Postman / Insomnia
-
-- **URL** : `POST https://votre-domaine.vercel.app/api/setup`
-- **Headers** : 
-  - `Content-Type: application/json`
-  - `Authorization: Bearer VOTRE_SETUP_SECRET`
-- **Body** (JSON) :
+Réponse attendue (201) :
 ```json
-{
-  "login": "root",
-  "password": "VOTRE_MOT_DE_PASSE_SECURISE",
-  "email": "admin@votre-domaine.com",
-  "firstName": "Admin",
-  "lastName": "User"
-}
+{ "message": "Root user created successfully", "email": "admin@example.com" }
 ```
 
-⚠️ **Sécurité** :
-- Le root user ne peut être créé **qu'une seule fois**
-- Vous devez fournir le `SETUP_SECRET` dans le header `Authorization: Bearer` ou dans le body
-- Après création, la route retournera une erreur 403 si vous essayez de recréer le root user
+Retourne 403 si appelé une seconde fois.
 
-### 6. Tester l'API
+---
 
-#### Login
+## 5. Vérifier le déploiement
 
 ```bash
-curl -X POST https://votre-domaine.vercel.app/api/auth/login \
+# Health check
+curl https://your-api.vercel.app/api/health
+
+# Login
+curl -X POST https://your-api.vercel.app/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "login": "root",
-    "password": "VOTRE_MOT_DE_PASSE"
-  }'
+  -d '{ "email": "admin@example.com", "password": "secure-password" }'
 ```
 
-Réponse :
-```json
-{
-  "session": "SESSION_ID"
-}
-```
+---
 
-#### Récupérer l'utilisateur connecté
+## Dépannage
 
-```bash
-curl -X GET https://votre-domaine.vercel.app/api/auth/me \
-  -H "Authorization: Bearer SESSION_ID"
-```
+**`SETUP_SECRET environment variable is not set`**
+→ Ajouter la variable dans Vercel Dashboard > Settings > Environment Variables
 
-## 🔒 Sécurité
+**`Unauthorized` lors du setup**
+→ Vérifier que le token dans `Authorization: Bearer` correspond exactement à `SETUP_SECRET`
 
-### Variables d'environnement sensibles
+**`Root user already exists`**
+→ Normal — le setup ne peut s'exécuter qu'une fois
 
-- `SETUP_SECRET` : Ne jamais commiter dans Git
-- `MONGODB_URI` / `MONGODB_PWD` : Ne jamais commiter dans Git
+**`Database connection failed` (health check)**
+→ Vérifier `DATABASE_URL` dans les env vars Vercel. S'assurer que `?sslmode=require` est bien présent.
 
-### Bonnes pratiques
+**Cold start lent (première requête)**
+→ Normal pour les fonctions serverless Vercel. Les appels suivants sont plus rapides grâce au cache Prisma.
 
-1. ✅ Utilisez des mots de passe forts pour le root user
-2. ✅ Changez le mot de passe root après la première connexion
-3. ✅ Ne partagez jamais le `SETUP_SECRET`
-4. ✅ Limitez les IPs autorisées sur MongoDB Atlas si possible
-5. ✅ Utilisez HTTPS (automatique avec Vercel)
+---
 
-## 📝 Routes disponibles
+## Sécurité
 
-- `POST /api/auth/login` - Authentification
-- `GET /api/auth/me` - Récupérer l'utilisateur connecté (nécessite session)
-- `POST /api/board` - Créer un board (nécessite SuperAdmin + session)
-- `POST /api/setup` - Initialiser le root user (une seule fois, nécessite SETUP_SECRET)
-
-## 🐛 Dépannage
-
-### Erreur "SETUP_SECRET environment variable is not set"
-→ Ajoutez la variable `SETUP_SECRET` dans Vercel Dashboard > Settings > Environment Variables
-
-### Erreur "Unauthorized" lors du setup
-→ Vérifiez que le token dans `Authorization: Bearer` correspond à `SETUP_SECRET`
-
-### Erreur "Root user already exists"
-→ Le root user a déjà été créé. C'est normal, la route ne peut être utilisée qu'une fois.
-
-### Erreur de connexion MongoDB
-→ Vérifiez vos variables d'environnement MongoDB dans Vercel Dashboard
-
-### Cold start lent
-→ Normal pour les fonctions serverless. Les appels suivants seront plus rapides grâce au cache MongoDB.
-
-## 📚 Ressources
-
-- [Documentation Vercel](https://vercel.com/docs)
-- [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-- [Vercel Serverless Functions](https://vercel.com/docs/functions)
+- Ne jamais commiter `.env` (gitignored)
+- `SETUP_SECRET` et `SHA256_SALT` : générés aléatoirement, jamais réutilisés entre environnements
+- Sessions : tokens hashés en SHA-256 en base, TTL 30 jours, révocables
