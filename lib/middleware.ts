@@ -1,3 +1,4 @@
+import type { Context } from 'hono'
 import { createMiddleware } from 'hono/factory'
 import { PostgresService } from '../services/postgres/postgres.service'
 import { IUser, IUserRole } from '../models'
@@ -6,19 +7,19 @@ export type AuthEnv = {
   Variables: { user: IUser }
 }
 
-// jose v6 is pure ESM — lazy dynamic import to stay compatible with CJS build (tsc → Vercel)
 type JoseModule = typeof import('jose')
 type JWKSGetter = ReturnType<JoseModule['createRemoteJWKSet']>
+const importJose: () => Promise<JoseModule> = new Function('return import("jose")') as () => Promise<JoseModule>
 let _jose: JoseModule | null = null
 let _jwks: JWKSGetter | null = null
 const getJose = async (): Promise<{ jose: JoseModule; jwks: JWKSGetter }> => {
-  if (!_jose) _jose = await import('jose')
+  if (!_jose) _jose = await importJose()
   if (!_jwks) _jwks = _jose.createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!))
   return { jose: _jose, jwks: _jwks }
 }
 
 const isDev = process.env.NODE_ENV !== 'production'
-const unauthorized = (c: Parameters<Parameters<typeof createMiddleware>[0]>[0], reason: string) => {
+const unauthorized = (c: Context<AuthEnv>, reason: string) => {
   if (isDev) console.warn('[auth] 401:', reason)
   return c.json({ error: 'Unauthorized', ...(isDev && { reason }) }, 401)
 }
