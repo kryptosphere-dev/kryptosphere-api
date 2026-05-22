@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '../../lib/middleware'
-import { PostgresService } from '../../services/postgres/postgres.service'
-import { IUserRole } from '../../models'
+import { authMiddleware } from '../lib/middleware'
+import { PostgresService } from '../services/postgres/postgres.service'
+import { IUserRole } from '../models'
 
 const router = new Hono()
 

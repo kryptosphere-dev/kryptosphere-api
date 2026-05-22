@@ -9,7 +9,7 @@
     "outDir": "dist"
   },
   "include": [
-    "api/**/*.ts",
+    "routes/**/*.ts",
     "app.ts",
     "lib/**/*.ts",
     "models/**/*.ts",
